@@ -14,6 +14,11 @@ batch that **rescues what should persist into the long-term layer before it ages
 > ask you a few questions (output language, project folder, vault, which tasks)
 > and configure everything for you.
 
+![Monitoring dashboard in Obsidian — daily trend table with token / activity line charts](assets/obsidian-dashboard.png)
+
+> The daily monitoring dashboard in Obsidian (Dataview + Charts): per-machine
+> activity/token table and trend lines, generated automatically each night.
+
 ## Memory hierarchy
 
 | Layer | Role | Location |
