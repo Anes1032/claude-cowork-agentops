@@ -6,8 +6,20 @@ not assume answers.
 
 ## Prerequisites (confirm, help if missing)
 - claude-mem is installed and running (`~/.claude-mem/claude-mem.db` exists).
-- This repo is cloned inside the user's **projects root** (the dev folder they connect to Cowork), e.g. `~/Develop/claude-cowork-agentops`. If not cloned yet, tell them the `git clone` command and where to put it.
 - An Obsidian vault exists on a **local path** (not a cloud streaming path), e.g. `~/Develop/obsidian/MyVault`. Dataview (with JavaScript Queries enabled) and Obsidian Charts plugins recommended.
+
+## Step 0 — Ensure the repo is cloned
+This kit treats its **parent directory as the "projects root"**, so it must live
+directly inside the dev folder the user connects to Cowork. Check whether it is
+already cloned (`ls -d /sessions/*/mnt/*/claude-cowork-agentops`). If not, tell the
+user to run, on their machine:
+
+```bash
+cd <projects-root>          # e.g. ~/Develop  (the folder they connect to Cowork)
+git clone https://github.com/Anes1032/claude-cowork-agentops.git claude-cowork-agentops
+```
+
+Then have them connect that projects root in Cowork (Step 2) and continue.
 
 ## Step 1 — Ask the user (AskUserQuestion)
 Collect:
