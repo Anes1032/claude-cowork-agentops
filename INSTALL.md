@@ -18,7 +18,7 @@ adoption / hotspot scans). Put it directly inside the dev folder you connect to 
 
 ```bash
 cd ~/Develop                 # the dev folder you connect to Cowork
-git clone <repo-url> claude-cowork-agentops
+git clone https://github.com/Anes1032/claude-cowork-agentops.git claude-cowork-agentops
 ```
 
 ## 3. Configure machine name + timezone (per machine, not synced)
