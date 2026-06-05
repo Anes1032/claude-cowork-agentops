@@ -103,3 +103,34 @@ Narrative in {{OUTPUT_LANGUAGE}}. **Run on ONE machine only.**
 6. Final report: merged n / updated n / redirected n.
 Do not delete files (redirect instead). Do not touch CLAUDE.md/projects. ~/.claude is not writable.
 ===PROMPT-END===
+
+---
+
+## Task 5 (optional, one-time): claude-mem-backfill — run manually, not on a cron
+For users who already had claude-mem before installing this kit. Backfills past dates.
+Register it as an **ad-hoc** task (no schedule) and trigger via Run now, or just paste
+this prompt into chat once.
+
+===PROMPT-START===
+You are doing a one-time **backfill** of past claude-mem memory into the vault.
+This can be large, so let the user pick the period.
+
+1. Work dir: `ls -d /sessions/*/mnt/*/claude-cowork-agentops`. If missing, report and stop.
+2. Obsidian vault: `VAULT="$(dirname "$(find /sessions/*/mnt -maxdepth 4 -name .obsidian -type d 2>/dev/null | head -1)")"`. If empty, report and stop.
+3. Show the available span: `cd <workdir> && python3 backfill.py --list-range`.
+4. Ask the user (AskUserQuestion):
+   - **Date window** to backfill (suggest the full available span or e.g. "last 14 days"). Capture as --from/--to or --days.
+   - **Also backfill reports & knowledge?** (LLM-generated, one analysis per day — can be slow/costly). Default NO. If yes, recommend a SMALL window (e.g. <= 7 days).
+5. **Deterministic backfill (monitoring + adoption)** — cheap, do this first:
+   `python3 backfill.py --vault "$VAULT" --from <FROM> --to <TO>`  (or `--days <N>`).
+   This writes one monitoring note per day plus a single current adoption snapshot.
+6. **(Optional) reports + knowledge backfill** — only if the user opted in, and only over the small window:
+   For each date D in the chosen small window:
+   - `python3 memory_digest.py --date D` to get that day's digest (this does NOT touch state).
+   - If the day has memory, write a **report** ({{OUTPUT_LANGUAGE}}) to `"$VAULT/reports/<YM>/<DD>/<MACHINE>.md"` and extract **knowledge** atomic notes to `"$VAULT/knowledge/<slug>.md"`, exactly like the daily housekeeping task (same sections, dedupe knowledge, write via `redact.py --scrub` through a temp file). Use D as the date in frontmatter. Skip empty days.
+   - `MACHINE` from `~/.claude-mem/machine.json`.
+7. Do NOT run `memory_digest.py --commit` here (backfill must not move the incremental checkpoint used by the daily task).
+8. Final report: how many monitoring days written, adoption snapshot date, and (if done) how many report/knowledge days written.
+
+Notes: adoption reflects CURRENT git state (only one snapshot is meaningful, not per past day). Backfill never deletes or commits. reports/knowledge are LLM-generated, so keep the window small.
+===PROMPT-END===

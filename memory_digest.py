@@ -137,6 +137,51 @@ def fetch(conn, since_epoch, include_all):
     return obs, summaries, max_epoch
 
 
+def _offset_hours():
+    p = os.path.join(DATA_DIR, "machine.json")
+    if os.path.exists(p):
+        try:
+            return float(json.load(open(p)).get("utc_offset_hours", 9))
+        except Exception:
+            pass
+    return 9.0
+
+
+def day_window_ms(date_str):
+    """[00:00, next 00:00) of local date_str (YYYY-MM-DD) as epoch ms."""
+    import datetime as _dt
+    tz = _dt.timezone(_dt.timedelta(hours=_offset_hours()))
+    start = _dt.datetime.fromisoformat(date_str).replace(tzinfo=tz)
+    end = start + _dt.timedelta(days=1)
+    return int(start.timestamp() * 1000), int(end.timestamp() * 1000)
+
+
+def fetch_window(conn, lo, hi):
+    """Fetch observations/summaries within a [lo, hi) epoch window (for backfill)."""
+    cur = conn.cursor()
+    obs = cur.execute(
+        """
+        SELECT project, type, title, subtitle, facts, narrative, concepts,
+               files_read, files_modified, created_at, created_at_epoch
+        FROM observations
+        WHERE created_at_epoch >= ? AND created_at_epoch < ?
+        ORDER BY project, created_at_epoch
+        """,
+        (lo, hi),
+    ).fetchall()
+    summaries = cur.execute(
+        """
+        SELECT project, request, investigated, learned, completed, next_steps,
+               notes, created_at, created_at_epoch
+        FROM session_summaries
+        WHERE created_at_epoch >= ? AND created_at_epoch < ?
+        ORDER BY project, created_at_epoch
+        """,
+        (lo, hi),
+    ).fetchall()
+    return obs, summaries
+
+
 def build_digest(obs, summaries):
     by_project = defaultdict(
         lambda: {
@@ -192,9 +237,9 @@ def build_digest(obs, summaries):
     return by_project, cross_project
 
 
-def render_markdown(by_project, cross_project, since_epoch, include_all, max_epoch):
+def render_markdown(by_project, cross_project, since_epoch, include_all, max_epoch, scope_label=None):
     out = []
-    scope = "ALL memory" if include_all else f"new memory (epoch > {since_epoch})"
+    scope = scope_label or ("ALL memory" if include_all else f"new memory (epoch > {since_epoch})")
     out.append("# claude-mem memory digest")
     out.append(f"Scope: {scope}  /  latest epoch: {max_epoch}\n")
 
@@ -254,6 +299,8 @@ def main():
     ap.add_argument("--all", action="store_true", help="include ALL memory")
     ap.add_argument("--commit", type=int, metavar="EPOCH", help="advance the state checkpoint")
     ap.add_argument("--status", action="store_true")
+    ap.add_argument("--date", metavar="YYYY-MM-DD",
+                    help="digest only that local day (for backfill); ignores and does not touch state")
     args = ap.parse_args()
 
     if not os.path.exists(DB_PATH):
@@ -292,6 +339,15 @@ def main():
         print(f"last_run: {state.get('last_run')}")
         print(f"observations total: {total_o} / summaries total: {total_s}")
         print(f"unprocessed: {new} (observations {new_o} / summaries {new_s})")
+        return
+
+    if args.date:
+        # Day-scoped digest for backfill; does NOT touch state.
+        lo, hi = day_window_ms(args.date)
+        obs, summaries = fetch_window(conn, lo, hi)
+        by_project, cross = build_digest(obs, summaries)
+        print(render_markdown(by_project, cross, lo, False, hi,
+                              scope_label=f"day {args.date}"))
         return
 
     if args.digest:

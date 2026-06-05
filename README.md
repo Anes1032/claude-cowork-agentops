@@ -53,6 +53,7 @@ Claude Code work -> claude-mem (local, short/mid-term)
 | `knowledge_audit.py` | Surface duplicate / stale knowledge notes (helper for monthly consolidation) |
 | `redact.py` | Mask API keys / tokens / private keys before writing to the vault |
 | `health_check.py` | Inspect claude-mem worker / errors / WAL and judge OK/WARN/ALERT |
+| `backfill.py` | (optional, one-time) Backfill monitoring/adoption for past dates if you already had claude-mem — pick the period |
 
 All scripts read the claude-mem DB from a **copy** (never touch the live WAL).
 Machine name and timezone come from `~/.claude-mem/machine.json` (local, not synced).
@@ -93,6 +94,22 @@ manually per [`INSTALL.md`](INSTALL.md). In short:
 3. Connect `~/.claude-mem`, your projects root, and a **local** Obsidian vault in Cowork.
 4. Register the scheduled tasks from `scheduled-tasks.md` (choose your report/knowledge language).
 5. For Slack alerts: create a channel, put its channel_id in the health-check prompt, Run now once to approve.
+
+## Backfill (optional — existing claude-mem users)
+
+Already had claude-mem before installing this? You can backfill past dates. The
+range can be large, so you pick the period.
+
+```bash
+python3 backfill.py --list-range                          # see how far back memory goes
+python3 backfill.py --vault "<vault>" --days 14            # monitoring + adoption for last 14 days
+python3 backfill.py --vault "<vault>" --from 2026-05-01 --to 2026-05-31
+```
+
+`monitoring/` and `adoption/` are deterministic (instant). `reports/` and
+`knowledge/` are LLM-generated, so backfill them via the **`claude-mem-backfill`**
+task in [`scheduled-tasks.md`](scheduled-tasks.md) — keep that window small.
+Backfill never commits or moves the daily incremental checkpoint.
 
 ## Design notes
 

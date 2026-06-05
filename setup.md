@@ -59,5 +59,14 @@ Tell the user to Run now each task once to approve Write/Edit (and Slack for the
 health check). For Slack, the first WARN/ALERT (or a one-time forced test) is what
 captures the approval — offer to do a temporary test send if they want it pre-approved now.
 
-## Step 8 — Summary
-Report what you configured: machine.json contents, which tasks were registered (taskId + cron), vault path, output language, and any follow-ups (e.g. set up Obsidian Sync for multi-device, install Dataview/Charts).
+## Step 8 — Offer to backfill past dates (optional)
+The user may already have claude-mem history from before installing this kit. Ask
+(AskUserQuestion) whether they want to backfill.
+- If yes: show the available span with `cd <workdir> && python3 backfill.py --list-range`, then ask for a window (full span / last N days / from–to). The range can be large, so let them choose.
+- Run the deterministic backfill: `python3 backfill.py --vault "<VAULT>" --from <FROM> --to <TO>` (or `--days <N>`) — writes monitoring + a single adoption snapshot.
+- Optionally ask if they also want `reports/` + `knowledge/` backfilled (LLM-generated, slower/costly); if yes, run the `claude-mem-backfill` task (Task 5 in scheduled-tasks.md) over a SMALL window.
+- Backfill never commits and never moves the daily incremental checkpoint.
+- If no: skip.
+
+## Step 9 — Summary
+Report what you configured: machine.json contents, which tasks were registered (taskId + cron), vault path, output language, whether backfill was run (and the range), and any follow-ups (e.g. set up Obsidian Sync for multi-device, install Dataview/Charts).

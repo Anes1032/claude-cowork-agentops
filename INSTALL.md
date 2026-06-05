@@ -67,3 +67,11 @@ Future automated runs then won't pause on permission prompts.
 - **Other OS**: scripts auto-discover `~/.claude-mem`; if not found, set `CLAUDE_MEM_DATA_DIR`.
 - **CLAUDE.md**: in git projects it is proposed uncommitted (`git diff` -> commit = accept / checkout = discard). In non-git dirs, new files are created only (existing ones are never overwritten).
 - **Multiple machines**: reports/monitoring/adoption are namespaced by machine; knowledge is shared, so run monthly consolidation on one machine only.
+
+## Optional — backfill past dates (existing claude-mem users)
+If you already had claude-mem, backfill history with `backfill.py` (you choose the period):
+```bash
+python3 backfill.py --list-range
+python3 backfill.py --vault "<vault>" --days 14   # monitoring + adoption
+```
+For `reports/` and `knowledge/` (LLM-generated), use the `claude-mem-backfill` task in `scheduled-tasks.md` over a small window. Backfill never commits or moves the daily checkpoint.
