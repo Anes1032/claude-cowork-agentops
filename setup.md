@@ -57,6 +57,15 @@ task with the given taskId and cron, using the prompt block, AFTER substituting:
 - `{{OUTPUT_LANGUAGE}}` -> the chosen language.
 - `{{SLACK_CHANNEL_ID}}` -> the captured channel_id (health check only; if no Slack, remove the Slack bullet from that prompt).
 
+**Localize the task prompt to the chosen output language.** Register each task with its
+human-readable procedure text TRANSLATED into the chosen language, so the user can read
+and audit their registered tasks. Keep these **literal / untranslated** (translating them
+breaks the task): all shell commands and pipelines, file/dir paths, script names and CLI
+flags, `find`/`ls`/`python3 ...` invocations, cron expressions, taskIds, the channel_id,
+frontmatter keys (`type`, `date`, `machine`, `tags`, ...), the provenance marker
+`<!-- maintained-by: claude-mem-housekeeping -->`, and the placeholder values. If the user
+prefers English task prompts, ask — keeping them in English is always safe.
+
 Always register Task 1 (`claude-mem-housekeeping`, `0 0 * * *`). Register the optional tasks the user selected. For the monthly consolidation task, remind them to enable it on ONE machine only.
 
 ## Step 7 — Pre-approve tools
