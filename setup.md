@@ -43,6 +43,11 @@ Copy the dashboard templates into the vault so Dataview/Charts views work:
 `cp -r <workdir>/vault-templates/. "<VAULT>/"` (do not overwrite existing files; skip any that exist).
 `<workdir>` is the cloned repo dir; find the vault via `find /sessions/*/mnt -maxdepth 4 -name .obsidian -type d`.
 
+Then **ask (AskUserQuestion) whether to add a vault-root `CLAUDE.md`** — it tells agents
+(e.g. via an Obsidian MCP, or Claude Code working over the vault) what each folder is and
+which are read-only vs editable. If yes and one doesn't already exist:
+`cp <workdir>/vault-CLAUDE.md "<VAULT>/CLAUDE.md"`. If no, skip.
+
 ## Step 5 — Verify scripts
 Run `cd <workdir> && python3 memory_digest.py --status`. If it prints the observation total, the DB is discovered correctly.
 

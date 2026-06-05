@@ -195,10 +195,10 @@ def main():
     note = render(fix_counts, touch_counts, fix_titles, proj_of, date_str, mach, args.window_days, args.min_fixes)
 
     if args.vault:
-        ym, dd = date_str[:7], date_str[8:10]
-        out_dir = os.path.join(args.vault, "hotspots", ym, dd)
+        # Weekly cadence -> group by year, file = MM-DD-<machine> (not the daily YYYY-MM/DD nesting).
+        out_dir = os.path.join(args.vault, "hotspots", date_str[:4])
         os.makedirs(out_dir, exist_ok=True)
-        out = os.path.join(out_dir, f"{mach}.md")
+        out = os.path.join(out_dir, f"{date_str[5:]}-{mach}.md")
         with open(out, "w") as f:
             f.write(note)
         print(f"wrote: {out}")

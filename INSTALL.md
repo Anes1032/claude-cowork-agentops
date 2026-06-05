@@ -34,6 +34,9 @@ The incremental state (`~/.claude-mem/housekeeping-state.json`) is also stored l
 ## 4. Prepare an Obsidian vault (local path)
 - Keep the vault on a **local path** (cloud streaming paths are not mounted in Cowork task VMs). e.g. `~/Develop/obsidian/MyVault`.
 - Sync across devices with **Obsidian Sync** (recommended) or git.
+- Seed dashboards/index: `cp -r <repo>/vault-templates/. "<vault>/"` (skips nothing; don't overwrite existing).
+- **Optional — vault `CLAUDE.md`**: if an agent will read/work over the vault (e.g. via an Obsidian MCP, or Claude Code), copy `vault-CLAUDE.md` to the vault root so the agent knows what each folder is and which are read-only:
+  `cp <repo>/vault-CLAUDE.md "<vault>/CLAUDE.md"`. Skip if you don't want it.
 
 ## 5. Connect folders in Cowork
 - `~/.claude-mem`
