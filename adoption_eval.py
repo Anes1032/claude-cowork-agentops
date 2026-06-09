@@ -78,9 +78,9 @@ def classify(claude_md):
     if not repo:
         return dict(path=claude_md, state="nongit", repo=None, last_commit=None, pipeline=pipe)
     rel = os.path.relpath(claude_md, repo)
-    tracked = run(["git", "ls-files", "--error-unmatch", rel], cwd=repo).returncode == 0
+    tracked = run(["git", "--no-optional-locks", "ls-files", "--error-unmatch", rel], cwd=repo).returncode == 0
     if tracked:
-        lc = run(["git", "log", "-1", "--format=%cs", "--", rel], cwd=repo).stdout.strip()
+        lc = run(["git", "--no-optional-locks", "log", "-1", "--format=%cs", "--", rel], cwd=repo).stdout.strip()
         return dict(path=claude_md, state="committed", repo=repo, last_commit=lc or None, pipeline=pipe)
     return dict(path=claude_md, state="pending", repo=repo, last_commit=None, pipeline=pipe)
 

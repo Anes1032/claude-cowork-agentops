@@ -48,7 +48,7 @@ housekeeping narrative are written in {{OUTPUT_LANGUAGE}}.**
        - **Root CLAUDE.md = high-level only**: project overview, conventions/rules, project settings, environment/setup, architecture, and a summary of the main flows.
        - **Push detail down to a subdirectory CLAUDE.md**: module implementation details, file-level specifics, sub-system config, and localized gotchas belong in the CLAUDE.md of the most relevant directory (package/module boundary — a dir with package.json/pyproject.toml/Cargo.toml etc. — or where files_modified concentrate). Do NOT put low-level detail in the root.
        - When updating, if a project's root CLAUDE.md has accumulated low-level detail, relocate it to the appropriate subdir CLAUDE.md and keep the root high-level (leave a one-line pointer like "see `<subdir>/CLAUDE.md`" if helpful).
-       - Write new / Edit existing. In a git repo, if the CLAUDE.md has user uncommitted changes (`git -C <repo> status --porcelain`), do NOT overwrite — mark "needs manual review". Non-git dirs: create new only.
+       - Write new / Edit existing. In a git repo, if the CLAUDE.md has user uncommitted changes (`git -C <repo> --no-optional-locks status --porcelain` — `--no-optional-locks` so we never create a `.git/index.lock` in the user's repo), do NOT overwrite — mark "needs manual review". Non-git dirs: create new only.
        - **Always append a provenance marker line `<!-- maintained-by: claude-mem-housekeeping -->`.** Touch nothing but CLAUDE.md; never commit.
    (b) skill candidates: reusable workflows recurring across 2+ projects, as a SKILL.md skeleton (English) — proposal only.
    (c) global CLAUDE.md candidates: conventions truly common to 2+ projects (English) — proposal only.
