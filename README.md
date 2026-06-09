@@ -67,6 +67,7 @@ Script output is English; the LLM-authored reports/knowledge use your configured
 | `claude-mem-healthcheck` | `0 */2 * * *` | Health check every 2h. Alert to Slack + Obsidian on WARN/ALERT only |
 | `claude-mem-hotspot` | `0 9 * * 1` | Weekly tech-debt hotspot detection |
 | `claude-mem-knowledge-consolidate` | `0 9 1 * *` | Monthly knowledge merge/update/prune (run on ONE machine only) |
+| `claude-cowork-agentops-update` | `0 23 * * *` | (optional) `git pull --ff-only` to keep the batch up to date (public repo, anonymous HTTPS; safely skips if the tree is dirty) |
 
 Task prompts to register are in [`scheduled-tasks.md`](scheduled-tasks.md).
 
@@ -116,6 +117,7 @@ Backfill never commits or moves the daily incremental checkpoint.
 - Keep the **vault on a local path** (cloud streaming paths are not mounted in Cowork task VMs). Sync across devices with **Obsidian Sync** or git.
 - reports/monitoring/adoption are namespaced by `<machine>.md`, so multiple machines can write to the same vault without conflict. **knowledge is shared** — run monthly consolidation on one machine only.
 - CLAUDE.md is **proposed uncommitted**. Review with `git diff`; commit = accept, checkout = discard.
+- **CLAUDE.md placement is hierarchical**: the **root** CLAUDE.md stays high-level (overview, conventions, project settings, environment, architecture); **module-specific detail / file-level specifics / localized gotchas go into the CLAUDE.md of the relevant subdirectory** (package/module boundary or where changes concentrate).
 - `~/.claude/` (global CLAUDE.md / skills) is not writable from Cowork, so those are proposals only (apply manually).
 
 ## License

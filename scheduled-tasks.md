@@ -14,6 +14,8 @@ usernames / nested folders need no edits.
 | 2 | `claude-mem-healthcheck` | `0 */2 * * *` |
 | 3 | `claude-mem-hotspot` | `0 9 * * 1` |
 | 4 | `claude-mem-knowledge-consolidate` | `0 9 1 * *` |
+| 5 | `claude-mem-backfill` | (ad-hoc / run manually) |
+| 6 | `claude-cowork-agentops-update` | `0 23 * * *` |
 
 ---
 
@@ -35,13 +37,19 @@ housekeeping narrative are written in {{OUTPUT_LANGUAGE}}.**
 - TARGET (completed previous day, local TZ): `TARGET=$(python3 -c "import datetime;print((datetime.datetime.utcnow()+datetime.timedelta(hours=float('$OFF'))).date()-datetime.timedelta(days=1))")` / `YM=${TARGET:0:7}` / `DD=${TARGET:8:2}`
 - Projects: under the connected projects root (may be nested; resolve a project by `find /sessions/*/mnt/*/ -maxdepth 4 -type d -name "<project>"`).
 - Obsidian vault: `VAULT="$(dirname "$(find /sessions/*/mnt -maxdepth 4 -name .obsidian -type d 2>/dev/null | head -1)")"`. If empty, skip Obsidian outputs.
-- **Writes to reports/knowledge MUST go through redact**: write content with the Write tool to `<workdir>/.tmp.md`, then `python3 redact.py --scrub "<workdir>/.tmp.md" "<final vault path>"` (auto-masks secrets). Note any masking in the report. CLAUDE.md is written with Write/Edit to host absolute paths. Do NOT delete files via bash.
+- **Writes to reports/knowledge MUST go through redact**: use the SINGLE fixed temp file `<workdir>/.tmp.md` (overwrite it each time — do not create multiple temp names). Steps: Write content to `<workdir>/.tmp.md`, then `python3 redact.py --scrub "<workdir>/.tmp.md" "<final vault path>"` (auto-masks secrets). Note any masking in the report. CLAUDE.md is written with Write/Edit to host absolute paths.
+- **Deletion policy**: never delete CLAUDE.md / data / vault files. The ONLY exception is cleaning up your own temp file (step 9: `rm -f "<workdir>/.tmp"*.md`).
 
 ## Steps
 1. Prepare the variables above.
 2. `cd <workdir> && python3 memory_digest.py --status`. If "unprocessed" is 0, skip CLAUDE.md/knowledge/report/adoption (steps 7 monitoring and 8 healthcheck still run). Otherwise `python3 memory_digest.py --digest` and note the trailing `<!-- MAX_EPOCH=... -->`.
 3. Analyze (the `concepts` tags are noise; judge from observation content). Split into:
-   (a) CLAUDE.md auto-apply (English, do NOT commit): pick the most relevant directory, Write new / Edit existing. In a git repo, if the CLAUDE.md has user uncommitted changes (`git -C <repo> status --porcelain`), do NOT overwrite — mark "needs manual review". Non-git dirs: create new only. **Always append a provenance marker line `<!-- maintained-by: claude-mem-housekeeping -->`.** Touch nothing but CLAUDE.md; never commit.
+   (a) CLAUDE.md auto-apply (English, do NOT commit). **Place by level:**
+       - **Root CLAUDE.md = high-level only**: project overview, conventions/rules, project settings, environment/setup, architecture, and a summary of the main flows.
+       - **Push detail down to a subdirectory CLAUDE.md**: module implementation details, file-level specifics, sub-system config, and localized gotchas belong in the CLAUDE.md of the most relevant directory (package/module boundary — a dir with package.json/pyproject.toml/Cargo.toml etc. — or where files_modified concentrate). Do NOT put low-level detail in the root.
+       - When updating, if a project's root CLAUDE.md has accumulated low-level detail, relocate it to the appropriate subdir CLAUDE.md and keep the root high-level (leave a one-line pointer like "see `<subdir>/CLAUDE.md`" if helpful).
+       - Write new / Edit existing. In a git repo, if the CLAUDE.md has user uncommitted changes (`git -C <repo> status --porcelain`), do NOT overwrite — mark "needs manual review". Non-git dirs: create new only.
+       - **Always append a provenance marker line `<!-- maintained-by: claude-mem-housekeeping -->`.** Touch nothing but CLAUDE.md; never commit.
    (b) skill candidates: reusable workflows recurring across 2+ projects, as a SKILL.md skeleton (English) — proposal only.
    (c) global CLAUDE.md candidates: conventions truly common to 2+ projects (English) — proposal only.
 4. **Report ({{OUTPUT_LANGUAGE}}, work-log focused)**: write to a temp file with Write, then `redact.py --scrub` into `"$VAULT/reports/$YM/$DD/$MACHINE.md"`. Include, in order: frontmatter (`type: report`/`date: $TARGET`/`machine`/`tags`/`projects`) -> `## Summary` -> `## What was done` (per project, what was done on TARGET — the main point) -> `## CLAUDE.md applied (history)` (table: path/kind/git/summary; "none" if empty) -> `## skill proposals (history)` (with SKILL.md skeleton; "none" if empty) -> `## global CLAUDE.md proposals` ("none" if empty) -> `## Obsidian outputs` -> `## Next steps / pending`. If redact masked anything, note it at the top.
@@ -49,10 +57,10 @@ housekeeping narrative are written in {{OUTPUT_LANGUAGE}}.**
 6. **Adoption**: `python3 adoption_eval.py --vault "$VAULT" --date "$TARGET"`.
 7. **Monitoring (always)**: `python3 monitoring_digest.py --vault "$VAULT" --date "$TARGET"`. If no VAULT, use `--print`.
 8. **Health check**: `python3 health_check.py`; on WARN/ALERT warn in the final report (usually fixed by restarting the claude-mem worker).
-9. State: if you have MAX_EPOCH, `python3 memory_digest.py --commit <MAX_EPOCH>`.
+9. Cleanup + state: `rm -f "<workdir>/.tmp"*.md` to remove the temp file. Then, if you have MAX_EPOCH, `python3 memory_digest.py --commit <MAX_EPOCH>`.
 10. Final report (brief): report path / CLAUDE.md count + needs-review / skill+global counts / adoption / knowledge new n / monitoring date / health result. Do not dump full bodies.
 
-Rules: never commit, never delete, touch nothing but CLAUDE.md, ~/.claude is not writable, reports/knowledge go through redact, CLAUDE.md carries the provenance marker, CLAUDE.md/skill bodies in English, target is the previous day TARGET.
+Rules: never commit; never delete CLAUDE.md/data/vault (only your own temp file); touch nothing but CLAUDE.md; ~/.claude is not writable; reports/knowledge go through redact via the single fixed temp file, removed at the end; CLAUDE.md carries the provenance marker; CLAUDE.md/skill bodies in English; target is the previous day TARGET.
 ===PROMPT-END===
 
 ---
@@ -98,7 +106,7 @@ Narrative in {{OUTPUT_LANGUAGE}}. **Run on ONE machine only.**
    - Clear duplicate -> merge into one note, link related with `[[wikilink]]`. **Do not delete files** (sandbox constraint): fold the redundant note's content into the canonical one and replace the old note's body with a one-line redirect `-> merged into [[canonical]]`.
    - Stale / drifted -> reconcile against the latest claude-mem memory (use `memory_digest.py --digest --all` if needed) and update.
    - Contradiction -> verify the correct one against the latest observations and fix.
-4. All writes to knowledge MUST go through `redact.py --scrub` (temp file -> scrub -> vault).
+4. All writes to knowledge MUST go through `redact.py --scrub` (single fixed temp file `<workdir>/.tmp.md`, overwrite each time -> scrub -> vault), and `rm -f "<workdir>/.tmp"*.md` at the end.
 5. Record a consolidation report at `knowledge/_consolidation-<YYYY-MM>.md` (what was merged/updated/redirected).
 6. Final report: merged n / updated n / redirected n.
 Do not delete files (redirect instead). Do not touch CLAUDE.md/projects. ~/.claude is not writable.
@@ -133,4 +141,31 @@ This can be large, so let the user pick the period.
 8. Final report: how many monitoring days written, adoption snapshot date, and (if done) how many report/knowledge days written.
 
 Notes: adoption reflects CURRENT git state (only one snapshot is meaningful, not per past day). Backfill never deletes or commits. reports/knowledge are LLM-generated, so keep the window small.
+===PROMPT-END===
+
+---
+
+## Task 6 (optional): claude-cowork-agentops-update (cron `0 23 * * *`)
+Keeps the batch (scripts) up to date by pulling the repo. Best on machines that
+*consume* the repo (clean clones). On the machine where you author changes, a dirty
+working tree will safely block the pull (it never discards local work).
+
+Assumes a **public** repo (anonymous HTTPS pull, no credentials). For a private repo
+you'd need a token, which the sandbox does not have.
+
+===PROMPT-START===
+Update the claude-cowork-agentops repo (refresh the batch scripts).
+
+1. Find the repo: `REPO=$(ls -d /sessions/*/mnt/*/claude-cowork-agentops 2>/dev/null | head -1)`. If none, report "repo not connected" and stop.
+2. `BEFORE=$(git -C "$REPO" rev-parse HEAD)`.
+3. **Fast-forward pull over anonymous HTTPS** (rewrite an SSH origin to HTTPS so the sandbox can fetch a public repo without credentials):
+   `git -C "$REPO" -c url."https://github.com/".insteadOf="git@github.com:" pull --ff-only --no-edit 2>&1`  (capture output).
+4. `AFTER=$(git -C "$REPO" rev-parse HEAD)`.
+5. Branch on the result:
+   - **Updated (BEFORE != AFTER)**: list `git -C "$REPO" log --oneline --no-decorate "$BEFORE..$AFTER"` (the changelog), then `cd "$REPO" && python3 -m py_compile *.py` as a sanity check. Report the pulled commits + compile result. If `scheduled-tasks.md` changed in the pulled commits, add: "registered task prompts are NOT auto-updated — re-register affected tasks if needed."
+   - **Already up to date**: report it in one line.
+   - **Pull failed** (non-fast-forward / dirty working tree / auth required): report the error output as-is and **do not force** (never `reset --hard`, `clean -f`, `stash drop`, or discard local changes). State that it skipped to protect local changes.
+6. **Never** commit / push / reset --hard / delete files. Read-only fast-forward pull only.
+
+Note: a private repo will fail anonymous HTTPS fetch (needs a token). This task only refreshes the scripts; it does not change the prompt text of already-registered scheduled tasks.
 ===PROMPT-END===
