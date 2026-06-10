@@ -162,10 +162,11 @@ Update the claude-cowork-agentops repo (refresh the batch scripts).
    `git -C "$REPO" -c url."https://github.com/".insteadOf="git@github.com:" pull --ff-only --no-edit 2>&1`  (capture output).
 4. `AFTER=$(git -C "$REPO" rev-parse HEAD)`.
 5. Branch on the result:
-   - **Updated (BEFORE != AFTER)**: list `git -C "$REPO" log --oneline --no-decorate "$BEFORE..$AFTER"` (the changelog), then `cd "$REPO" && python3 -m py_compile *.py` as a sanity check. Report the pulled commits + compile result. If `scheduled-tasks.md` changed in the pulled commits, add: "registered task prompts are NOT auto-updated — re-register affected tasks if needed."
-   - **Already up to date**: report it in one line.
-   - **Pull failed** (non-fast-forward / dirty working tree / auth required): report the error output as-is and **do not force** (never `reset --hard`, `clean -f`, `stash drop`, or discard local changes). State that it skipped to protect local changes.
+   - **Updated (BEFORE != AFTER)**: get the changelog `git -C "$REPO" log --oneline --no-decorate "$BEFORE..$AFTER"`, the changed files `git -C "$REPO" diff --name-only "$BEFORE" "$AFTER"`, and run `cd "$REPO" && python3 -m py_compile *.py`. **Notify Slack** (`slack_send_message` to `channel_id="{{SLACK_CHANNEL_ID}}"`): a header that the repo updated, the commit count + short changelog, and the compile result. **If `scheduled-tasks.md` or `setup.md` is among the changed files, always add a warning**: scripts are updated but the prompt text of already-registered scheduled tasks is NOT auto-updated — re-register the affected tasks from `scheduled-tasks.md`. (Scheduled tasks can update scripts via pull, but not their own registered prompt.) Also report the same in the final message.
+   - **Already up to date**: report it in one line. No Slack.
+   - **Pull failed** (non-fast-forward / dirty working tree / auth required): **do not force** (never `reset --hard`, `clean -f`, `stash drop`, or discard local changes). Notify Slack with a failure note (auto-update blocked, manual pull may be needed) + the error summary, and report it.
 6. **Never** commit / push / reset --hard / delete files. Read-only fast-forward pull only.
+7. Slack is optional: if you didn't configure a channel, skip the Slack steps and just report in the final message.
 
 Note: a private repo will fail anonymous HTTPS fetch (needs a token). This task only refreshes the scripts; it does not change the prompt text of already-registered scheduled tasks.
 ===PROMPT-END===
