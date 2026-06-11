@@ -24,7 +24,7 @@ batch that **rescues what should persist into the long-term layer before it ages
 | Layer | Role | Location |
 |---|---|---|
 | CLAUDE.md | Conventions / structure (per project) | each project (proposed uncommitted in git) |
-| skill | Reusable logic (per project) | `~/.claude/skills` (applied manually) |
+| skill | Reusable logic | project-specific → `<project>/.claude/skills/` (auto, uncommitted); cross-project → `~/.claude/skills/` (proposal) |
 | claude-mem | Short/mid-term memory (local, transient) | `~/.claude-mem` |
 | Obsidian vault | Long-term memory (shared across devices) | local path (synced via Obsidian Sync, etc.) |
 
@@ -34,7 +34,7 @@ batch that **rescues what should persist into the long-term layer before it ages
 Claude Code work -> claude-mem (local, short/mid-term)
         | daily batch (Cowork scheduled task / 00:00)
         |-> CLAUDE.md   : conventions/structure (proposed uncommitted in the most relevant dir)
-        |-> skill cands : reusable logic (proposed)
+        |-> skills      : project-specific -> <project>/.claude/skills (auto); cross-project -> ~/.claude (proposal)
         \-> Obsidian vault (long-term)
               |- reports/YYYY-MM/DD/<machine>.md      : that day's work log
               |- knowledge/<slug>.md                   : extracted reusable knowledge (atomic notes)
@@ -118,7 +118,8 @@ Backfill never commits or moves the daily incremental checkpoint.
 - reports/monitoring/adoption are namespaced by `<machine>.md`, so multiple machines can write to the same vault without conflict. **knowledge is shared** — run monthly consolidation on one machine only.
 - CLAUDE.md is **proposed uncommitted**. Review with `git diff`; commit = accept, checkout = discard.
 - **CLAUDE.md placement is hierarchical**: the **root** CLAUDE.md stays high-level (overview, conventions, project settings, environment, architecture); **module-specific detail / file-level specifics / localized gotchas go into the CLAUDE.md of the relevant subdirectory** (package/module boundary or where changes concentrate).
-- `~/.claude/` (global CLAUDE.md / skills) is not writable from Cowork, so those are proposals only (apply manually).
+- **Skills are placed by scope**: a skill specific to one project is written to that project's `<project>/.claude/skills/` (auto, uncommitted — review like CLAUDE.md); a cross-project skill targets `~/.claude/skills/`.
+- `~/.claude/` (global CLAUDE.md / cross-project skills) is not writable from Cowork, so those are proposals only (apply manually).
 
 ## License
 
