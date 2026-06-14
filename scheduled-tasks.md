@@ -159,6 +159,7 @@ you'd need a token, which the sandbox does not have.
 Update the claude-cowork-agentops repo (refresh the batch scripts).
 
 1. Find the repo: `REPO=$(ls -d /sessions/*/mnt/*/claude-cowork-agentops 2>/dev/null | head -1)`. If none, report "repo not connected" and stop.
+1b. **Recover a stale lock** (the pull writes `.git/index.lock`; on this mount a previous run can leave a stale one). `LOCK="$REPO/.git/index.lock"`. If it exists, remove it ONLY if BOTH: (i) no git process is running in this VM (`! pgrep -x git >/dev/null 2>&1`), AND (ii) it is stale, i.e. not modified in the last 5 min (`[ -z "$(find "$LOCK" -mmin -5 2>/dev/null)" ]`) — then `rm -f "$LOCK"`. Otherwise do NOT remove it (it may be active). The host's git is invisible to the VM, so the staleness check (ii) is required so a live lock is never deleted.
 2. `BEFORE=$(git -C "$REPO" rev-parse HEAD)`.
 3. **Fast-forward pull over anonymous HTTPS** (rewrite an SSH origin to HTTPS so the sandbox can fetch a public repo without credentials):
    `git -C "$REPO" -c url."https://github.com/".insteadOf="git@github.com:" pull --ff-only --no-edit 2>&1`  (capture output).
