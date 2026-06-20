@@ -148,28 +148,30 @@ Notes: adoption reflects CURRENT git state (only one snapshot is meaningful, not
 ---
 
 ## Task 6 (optional): claude-cowork-agentops-update (cron `0 23 * * *`)
-Keeps the batch (scripts) up to date by pulling the repo. Best on machines that
-*consume* the repo (clean clones). On the machine where you author changes, a dirty
-working tree will safely block the pull (it never discards local work).
+**Check-only.** This task does NOT pull — it only detects whether the repo is behind
+and notifies Slack. Pulling (and re-registering any changed task prompts) stays a manual
+step on the **host**, where git handles its own locks correctly.
 
-Assumes a **public** repo (anonymous HTTPS pull, no credentials). For a private repo
-you'd need a token, which the sandbox does not have.
+Why check-only: a `git pull` from inside the Cowork VM writes to `.git`
+(`index.lock`, `ORIG_HEAD.lock`, `refs/**/*.lock`, …). On the virtiofs mount the VM
+often cannot unlink those locks afterward (`Operation not permitted`), so stale locks
+accumulate and eventually block all pulls — with no way for the VM to recover. The check
+here uses `git ls-remote`, a pure network query that **never writes to `.git`**, so it
+cannot create lock files. Structurally lock-free.
+
+Assumes a **public** repo (anonymous HTTPS, no credentials). For a private repo you'd
+need a token, which the sandbox does not have.
 
 ===PROMPT-START===
-Update the claude-cowork-agentops repo (refresh the batch scripts).
+Check whether the claude-cowork-agentops repo has updates (DO NOT pull).
 
 1. Find the repo: `REPO=$(ls -d /sessions/*/mnt/*/claude-cowork-agentops 2>/dev/null | head -1)`. If none, report "repo not connected" and stop.
-1b. **Recover stale locks** (the pull writes `.git/index.lock`, `ORIG_HEAD.lock`, `refs/**/*.lock`, etc.; on this mount a previous run can leave a stale one). Only when no git process is running in this VM, delete every `*.lock` under `.git` that is OLDER than 5 minutes: `if ! pgrep -x git >/dev/null 2>&1; then find "$REPO/.git" -name '*.lock' -mmin +5 -print -delete 2>/dev/null; fi`. Report any removed. **Never delete a fresh lock (≤5 min)** — it may belong to a live operation; the host's git is invisible to the VM, so the staleness threshold is the safety guard. If a git process is running, remove nothing.
-2. `BEFORE=$(git -C "$REPO" rev-parse HEAD)`.
-3. **Fast-forward pull over anonymous HTTPS** (rewrite an SSH origin to HTTPS so the sandbox can fetch a public repo without credentials):
-   `git -C "$REPO" -c url."https://github.com/".insteadOf="git@github.com:" pull --ff-only --no-edit 2>&1`  (capture output).
-4. `AFTER=$(git -C "$REPO" rev-parse HEAD)`.
-5. Branch on the result:
-   - **Updated (BEFORE != AFTER)**: get the changelog `git -C "$REPO" log --oneline --no-decorate "$BEFORE..$AFTER"`, the changed files `git -C "$REPO" diff --name-only "$BEFORE" "$AFTER"`, and run `cd "$REPO" && python3 -m py_compile *.py`. **Notify Slack** (`slack_send_message` to `channel_id="{{SLACK_CHANNEL_ID}}"`): a header that the repo updated, the commit count + short changelog, and the compile result. **If `scheduled-tasks.md` or `setup.md` is among the changed files, always add a warning**: scripts are updated but the prompt text of already-registered scheduled tasks is NOT auto-updated — re-register the affected tasks from `scheduled-tasks.md`. (Scheduled tasks can update scripts via pull, but not their own registered prompt.) Also report the same in the final message.
-   - **Already up to date**: report it in one line. No Slack.
-   - **Pull failed** (non-fast-forward / dirty working tree / auth required): **do not force** (never `reset --hard`, `clean -f`, `stash drop`, or discard local changes). Notify Slack with a failure note (auto-update blocked, manual pull may be needed) + the error summary, and report it.
-6. **Never** commit / push / reset --hard / delete files. Read-only fast-forward pull only.
-7. Slack is optional: if you didn't configure a channel, skip the Slack steps and just report in the final message.
+2. **Read-only check**: `OUT=$(bash "$REPO/scripts/check_update.sh" 2>&1); RC=$?`. The script compares the remote branch tip to the local HEAD with `git ls-remote` (a network query that writes nothing to `.git`, so no lock files are ever created). It prints one of `UP_TO_DATE <sha>` / `UPDATE_AVAILABLE local=… remote=…` (+ a `compare=` URL) / `CHECK_FAILED <reason>`.
+3. Branch on the exit code:
+   - **RC=0 (up to date)**: report it in one line. No Slack.
+   - **RC=10 (update available)**: **Notify Slack** (`slack_send_message` to `channel_id="{{SLACK_CHANNEL_ID}}"`): a header that an update is available, the local/remote SHAs and the `compare=` URL from `$OUT`, and always add: pull on the host (`cd <repo> && git pull --ff-only --no-edit`); if `scheduled-tasks.md` or `setup.md` changed in the diff, re-register the affected scheduled tasks from `scheduled-tasks.md` (registered prompts are not auto-updated). Report the same in the final message.
+   - **RC≠0/10 (check failed)**: Notify Slack with `:x: update check failed` + the reason from `$OUT`, and report it.
+4. **Never** pull / fetch / commit / push / reset / clean / write to `.git` / delete files. This task is a **read-only `git ls-remote` check only** — that is why it can never leave stale locks.
 
-Note: a private repo will fail anonymous HTTPS fetch (needs a token). This task only refreshes the scripts; it does not change the prompt text of already-registered scheduled tasks.
+Note: a private repo will fail the anonymous check (needs a token). Slack is optional: if you didn't configure a channel, skip the Slack steps and just report in the final message.
 ===PROMPT-END===

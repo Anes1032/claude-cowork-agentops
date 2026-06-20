@@ -67,9 +67,17 @@ Script output is English; the LLM-authored reports/knowledge use your configured
 | `claude-mem-healthcheck` | `0 */2 * * *` | Health check every 2h. Alert to Slack + Obsidian on WARN/ALERT only |
 | `claude-mem-hotspot` | `0 9 * * 1` | Weekly tech-debt hotspot detection |
 | `claude-mem-knowledge-consolidate` | `0 9 1 * *` | Monthly knowledge merge/update/prune (run on ONE machine only) |
-| `claude-cowork-agentops-update` | `0 23 * * *` | (optional) `git pull --ff-only` to keep the batch up to date (public repo, anonymous HTTPS; safely skips if the tree is dirty) |
+| `claude-cowork-agentops-update` | `0 23 * * *` | (optional) **Check-only** update detector. Notifies Slack when the repo is behind; never pulls |
 
 Task prompts to register are in [`scheduled-tasks.md`](scheduled-tasks.md).
+
+### Keeping the batch up to date
+The scheduled task above only **checks** for updates — it runs
+[`scripts/check_update.sh`](scripts/check_update.sh), which compares the remote branch tip
+against the local HEAD with `git ls-remote`. That is a read-only network query: it never
+writes to `.git`, so it cannot create the stale lock files that make VM-side `git pull`
+fragile. When an update is available it notifies Slack; you then **pull on the host**
+(`git pull --ff-only`) and re-register any scheduled tasks if `scheduled-tasks.md` changed.
 
 ## AgentOps pillars
 
